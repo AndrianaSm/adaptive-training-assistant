@@ -1,33 +1,82 @@
-# TurtleBot Exercise Detector
+# Adaptive Training Assistant
 
-## Files
-- `pose_demo.py`: subscribes to `/image_raw`, processes images with MediaPipe, displays pose landmarks and arm-raise counts, and sends a JSON line for each completed repetition.
-- `exercise_publisher.py`: receives those JSON lines on `127.0.0.1:8765` and publishes `std_msgs/msg/String` on `/exercise/stats`.
+A Python and ROS 2 project that uses the TurtleBot camera and MediaPipe to detect exercises and count repetitions.
 
-## Prerequisites
-- Both scripts run on the same computer (the TCP bridge uses localhost).
-- ROS 2 packages `rclpy`, `sensor_msgs`, `std_msgs`, and `cv_bridge` are available in the Pixi environment.
-- Python packages `opencv` and `mediapipe` are installed.
-- Place `pose_landmarker_lite.task` in the same folder as `pose_demo.py`.
-- The TurtleBot publishes camera messages on `/image_raw`, and the Mac and robot share the same ROS 2 domain/network.
+## Requirements
+
+- Ubuntu 24.04 / WSL2
+- ROS 2 Jazzy
+- Python 3.12
+- TurtleBot camera publishing images to `/image_raw`
+
+## Setup
+
+From the project root:
+
+```bash
+cd ~/adaptive-training-assistant
+source /opt/ros/jazzy/setup.bash
+```
+
+Create the virtual environment only if it does not already exist:
+
+```bash
+python3 -m venv .venv
+```
+
+Activate it and install the Python dependencies:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
 ## Run
-Terminal 1:
+
+The publisher and pose detector communicate over a local TCP connection, so run them in separate terminals.
+
+### Terminal 1 — Exercise publisher
+
 ```bash
-pixi run python exercise_publisher.py
+cd ~/adaptive-training-assistant
+source /opt/ros/jazzy/setup.bash
+source .venv/bin/activate
+python src/exercise_counter/exercise_publisher.py
 ```
 
-Terminal 2:
+The publisher listens on `127.0.0.1:8765` and publishes received exercise statistics to the ROS 2 topic `/exercise/stats`. Keep this terminal running.
+
+### Terminal 2 — Pose detector
+
 ```bash
-pixi run python pose_demo.py
+cd ~/adaptive-training-assistant
+source /opt/ros/jazzy/setup.bash
+source .venv/bin/activate
+python src/exercise_counter/pose_demo.py
 ```
 
-Optional Terminal 3:
+The detector subscribes to `/image_raw`, processes the camera images, and sends exercise statistics to the publisher. Press `Ctrl+C` to stop a process.
+
+## Check the topics
+
+To check that the camera topic is available:
+
 ```bash
-pixi run ros2 topic echo /exercise/stats
+source /opt/ros/jazzy/setup.bash
+ros2 topic list
+ros2 topic hz /image_raw
 ```
 
-Press `q` in the video window to stop `pose_demo.py`; use Ctrl+C to stop the publisher.
+To view exercise statistics published by the publisher, open another terminal and run:
 
-## Notes
-A repetition starts when both wrists are sufficiently above shoulder height and completes when both wrists move below shoulder height. This is a basic demo based on landmark height thresholds, not a clinical movement assessment.
+```bash
+source /opt/ros/jazzy/setup.bash
+ros2 topic echo /exercise/stats
+```
+
+## Troubleshooting
+
+- **No camera images:** Make sure the camera node is running on the TurtleBot and publishing to `/image_raw`.
+- **No `/image_raw` topic:** Check that the TurtleBot and computer can discover each other over ROS 2. Ensure they use compatible DDS/network settings and the same `ROS_DOMAIN_ID`.
+- **No exercise statistics:** Make sure both `exercise_publisher.py` and `pose_demo.py` are running. The publisher should show that it is listening on port `8765`.
+- **MediaPipe not found:** Activate `.venv` before running the Python scripts.
