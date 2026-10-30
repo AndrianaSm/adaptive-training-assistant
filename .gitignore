@@ -55,4 +55,4 @@ htmlcov/
 .ipynb_checkpoints
 
 # pyenv
-# .python-version
+# .python-version.ros-venv/
